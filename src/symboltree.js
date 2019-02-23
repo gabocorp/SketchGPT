@@ -38,6 +38,11 @@ var labels = false;
 var names = false;
 var symbols = false;
 
+var report = {
+	renamed: [],
+	sorted: []
+}
+
 treeGroup = findPageLayerNamed(treeGroupName);
 labelGroup = findPageLayerNamed(labelGroupName);
 symbols = collectSymbolMastersInPage();
@@ -54,6 +59,7 @@ export function onSyncSymbolTree() {
 		//generate new labels and sort symbols
 		arrangeSymbols();
 		setStoredSymbolMasterNames();
+		reportAlert();
 	} catch (error) {
 		console.error(error);
 		UI.alert('SymbolTree Just Messed It Up!!!', error.message + ' > Clearing everything out and starting fresh.');
@@ -61,6 +67,41 @@ export function onSyncSymbolTree() {
 		resetStoredSymbolMasterNames();
 		removeTree();
 		removeLabels();
+	}
+}
+
+function reportAlert() {
+	var reportText = "";
+
+	if (report.renamed.length > 0) {
+		if (report.renamed.length < 5) {
+			reportText += "Renamed:"
+			for (var i = 0; i < report.renamed.length; i++) {
+				reportText += "\n" + report.renamed[i].oldName + " ➤ " + report.renamed[i].newName
+			}
+		} else {
+			reportText += "Renamed " + report.renamed.length + " Symbols!"
+		}
+	}
+
+	if (report.sorted.length > 0 && report.renamed.length > 0) reportText += "\n\n";
+
+	if (report.sorted.length > 0) {
+		if (report.sorted.length < 5) {
+			reportText += "Repositioned:"
+			for (var i = 0; i < report.sorted.length; i++) {
+				reportText += "\n" + report.sorted[i].name;
+			}
+		} else {
+			reportText += "Repositioned " + report.sorted.length + " Symbols!"
+		}
+	}
+
+
+	if (report.sorted.length > 0 || report.renamed.length > 0) {
+		UI.alert('SymbolTree is HAPPY!!! 🤩', reportText);
+	}else{
+		UI.alert('SymbolTree is SAD!!! 😭', "Nothing to do. Everything looks good, though!");
 	}
 }
 
@@ -175,10 +216,15 @@ function arrangeLayersByMap(name, mapLevel, depth, previousSibling, parentLabel)
 	const layers = mapLevel._LAYERS;
 	for (var i = 0; i < layers.length; i++) {
 		const lf = layers[i].frame;
-		layers[i].frame = {
-			x: lastX,
-			y: lastY
-		};
+		if (lf.x != lastX || lf.y != lastY) {
+			report.sorted.push({
+				name: layers[i].name
+			});
+			layers[i].frame = {
+				x: lastX,
+				y: lastY
+			};
+		}
 		maxY = Math.max(maxY, lastY + lf.height);
 		lastX = lastX + margin + lf.width;
 	}
@@ -239,7 +285,7 @@ function addLabel(text, id, x, y, previousSibling, parentLabel) {
 function renameSymbolsByPosition() {
 	timestamp("+++ start rename ✏️");
 
-	var cnt = 0;
+
 
 	labelGroup.adjustToFit();
 	labels = labelGroup.layers.slice();
@@ -275,13 +321,15 @@ function renameSymbolsByPosition() {
 			path = pathStack.slice(1, depth + 1).join("");
 			var newName = calculateNewName(l.name, path);
 			if (l.name != newName) {
+				report.renamed.push({
+					oldName: l.name,
+					newName: newName
+				});
 				l.name = newName;
-				cnt++;
 			}
 		} //ELSE ignore
 	}
-	timestamp("rename");
-	message('✏️ Renamed ' + cnt + ' symbols.');
+	timestamp("rename done");
 }
 
 //// UTIL
