@@ -1,0 +1,39 @@
+{
+  "identifier": "com.gabocorp.symboltree",
+  "compatibleVersion": 3,
+  "bundleVersion": 1,
+  "commands": [
+
+    {
+      "script": "symboltree.js",
+      "shortcut" : "cmd option control 0",
+      "handler": "onSyncSymbolTree",
+      "name": "Run SymbolTree",
+      "identifier": "syncsymbols"
+    }
+    ,
+    {
+      "script": "auditor.js",
+      "shortcut" : "cmd option control i",
+      "handler": "onGenerateAuditor",
+      "name": "Generate TextStyle Artboard",
+      "identifier": "generateauditor"
+    },
+    {
+      "script": "auditor.js",
+      "handler": "onAuditLayer",
+      "name": "Audit Selected Artboard/SymbolMaster",
+      "identifier": "auditLayer"
+    }
+
+    
+  
+  ],
+  "menu": {
+    "items": [
+      "syncsymbols",
+      "generateauditor",
+      "auditLayer"
+    ]
+  }
+}
