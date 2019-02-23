@@ -282,7 +282,7 @@ function onGenerateAuditor() {
       y += padding;
     }
 
-    var sample = makeStyleSample(s, auditorBoard, margin, y); //TODO Display dupe error (lastName == s.name )
+    var sample = makeStyleSample(s, auditorBoard, margin, y);
 
     if (lastName == s.name) {
       drawWarning(sample);
@@ -522,58 +522,6 @@ function onGetStyleJSONs() {
   }
 
   console.log(JSON.stringify(output, null, 4));
-}
-
-function getPageNamed(name) {
-  for (var i = 0; i < document.pages.length; i++) {
-    var p = document.pages[i];
-
-    if (p.name == name) {
-      return p;
-    }
-  } //ELSE make new one
-
-
-  return new Page({
-    name: name,
-    parent: document
-  });
-}
-
-function findStylesInLayer(layer, result) {
-  //console.log( layer.sharedStyleId );
-  for (var i = 0; i < layer.layers.length; i++) {
-    var l = layer.layers[i];
-    findStylesInLayer(layer, result); //TODO FIX MERGE
-  }
-
-  return result;
-}
-
-function getUniqueGroup(name, parent, x, y, reset) {
-  var found = document.getLayersNamed(name);
-  found.forEach(function (element) {
-    if (element.parent.id == page.id) if (reset) {
-      element.remove();
-    } else {
-      return element;
-    }
-  });
-  var group = new Group({
-    name: name,
-    parent: parent
-  });
-
-  group._object.setHasClickThrough(true);
-
-  group.frame.x = x;
-  group.frame.y = y;
-  return group;
-}
-
-function sortStyleByName(a, b) {
-  //console.log(a.name);
-  return a.name.localeCompare(b.name);
 }
 
 /***/ }),

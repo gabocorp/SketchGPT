@@ -101,7 +101,7 @@ var exports =
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "onSyncSymbolTree", function() { return onSyncSymbolTree; });
-console.log("+++"); //const Page = require('sketch/dom').Page;
+console.log("+++");
 
 var Text = __webpack_require__(/*! sketch/dom */ "sketch/dom").Text;
 
@@ -118,16 +118,16 @@ var ShapePath = __webpack_require__(/*! sketch/dom */ "sketch/dom").ShapePath;
 var Settings = __webpack_require__(/*! sketch/settings */ "sketch/settings");
 
 var document = Document.getSelectedDocument();
-var page = document.selectedPage;
-
-var _time = Date.now();
-
-var debug = true; //Settings
+var page = document.selectedPage; //Settings
 
 var labelGroupName = "#LABELS";
 var treeGroupName = "#TREE";
 var depthMargin = 50;
 var margin = 50;
+var gray = '#777777';
+
+var _time = Date.now();
+
 var labelGroup = false;
 var treeGroup = false;
 var lastX = 0;
@@ -135,7 +135,7 @@ var lastY = 0;
 var maxY = 0;
 var labelStyle = {
   fontSize: 20,
-  textColor: "#777777FF",
+  textColor: gray,
   alignment: "left",
   fontFamily: 'Monaco',
   fontWeight: 5
@@ -143,9 +143,9 @@ var labelStyle = {
 var labels = false;
 var names = false;
 var symbols = false;
-treeGroup = findFirstLayerNamed(treeGroupName);
-labelGroup = findFirstLayerNamed(labelGroupName);
-symbols = collectSymbols(); //// #SYNC
+treeGroup = findPageLayerNamed(treeGroupName);
+labelGroup = findPageLayerNamed(labelGroupName);
+symbols = collectSymbolMastersInPage(); //// #SYNC
 
 function onSyncSymbolTree() {
   try {
@@ -153,32 +153,21 @@ function onSyncSymbolTree() {
 
     if (labelGroup) {
       //if labels exist, rename symbol masters based on labeling
-      getPreviousSymbolNames();
-      onRenameSymbolsByLocation();
+      getStoredSymbolMasterNames();
+      renameSymbolsByPosition();
     } //generate new labels and sort symbols
 
 
-    onArrangeSymbols();
-    storeCurrentNames();
+    arrangeSymbols();
+    setStoredSymbolMasterNames();
   } catch (error) {
     console.error(error);
     UI.alert('SymbolTree Just Messed It Up!!!', error.message + ' > Clearing everything out and starting fresh.'); //recover from error. Remove all labels to avoid renaming mishaps ;)
 
-    resetStoredNames();
+    resetStoredSymbolMasterNames();
     removeTree();
     removeLabels();
   }
-}
-
-function replaceContainerNamed(name) {
-  var found = document.getLayersNamed(name);
-  found.forEach(function (element) {
-    element.remove();
-  });
-  return new Group({
-    name: name,
-    parent: page
-  });
 }
 
 function removeTree() {
@@ -193,13 +182,14 @@ function removeLabels() {
   found.forEach(function (element) {
     element.remove();
   });
-}
+} // DATA ##
 
-function resetStoredNames() {
+
+function resetStoredSymbolMasterNames() {
   Settings.setDocumentSettingForKey(document, '_STSymbolNames', null);
 }
 
-function storeCurrentNames() {
+function setStoredSymbolMasterNames() {
   if (symbols == null || symbols.length == 0) {
     console.error("NO SYMBOL MASTERS HERE!!");
     return;
@@ -212,36 +202,32 @@ function storeCurrentNames() {
   Settings.setDocumentSettingForKey(document, '_STSymbolNames', names);
 }
 
-function getPreviousSymbolNames() {
+function getStoredSymbolMasterNames() {
   names = Settings.documentSettingForKey(document, '_STSymbolNames');
   if (!names) names = {};
-} // ARRANGE 
+} // ARRANGE ##
 
 
-function onArrangeSymbols() {
-  timestamp("store symbol names");
+function arrangeSymbols() {
   var map = newMap();
-  timestamp("+++ start arrange 📎");
   removeLabels();
   removeTree();
   labelGroup = new Group();
-  labelGroup.name = labelGroupName;
-  labelGroup.adjustToFit();
+  labelGroup.name = labelGroupName; //labelGroup.adjustToFit();
+
   labelGroup.parent = page;
 
   labelGroup._object.setHasClickThrough(true);
 
   treeGroup = new Group();
-  treeGroup.name = treeGroupName;
-  treeGroup.adjustToFit();
+  treeGroup.name = treeGroupName; //treeGroup.adjustToFit();
+
   treeGroup.parent = page;
 
   treeGroup._object.setHasClickThrough(true);
 
   treeGroup.locked = true;
-  timestamp("reset titles");
-  timestamp("collect symbols");
-  symbols.sort(sortSymbolsByName);
+  symbols.sort(sortByName);
   var map = newMap();
 
   for (var i = 0; i < symbols.length; i++) {
@@ -271,22 +257,32 @@ function mapLayerByName(layer, map) {
 
   mapThis._LAYERS.push(layer);
 }
+/*
+var fiber = require('sketch/async').createFiber()
+longRunningTask(function(err, result) {
+  fiber.cleanup()
+  // you can continue working synchronously here
+})
+*/
+
 
 function arrangeLayersByMap(name, mapLevel, depth, previousSibling, parentLabel) {
+  //RECURSIVE!!
   lastX = depth * depthMargin;
   lastY = maxY + margin;
   var label = addLabel(name, name, lastX, lastY, previousSibling, parentLabel);
   lastY += depthMargin;
   maxY += depthMargin;
+  var layers = mapLevel._LAYERS;
 
-  for (var i = 0; i < mapLevel._LAYERS.length; i++) {
-    // sort through Layer content - ROW (X)
-    var l = mapLevel._LAYERS[i].frame;
-    if (l.x != lastX) l.x = lastX;
-    if (l.y != lastY) l.y = lastY;
-    var maxYn = lastY + l.height;
-    maxY = Math.max(maxY, maxYn);
-    lastX = lastX + margin + l.width;
+  for (var i = 0; i < layers.length; i++) {
+    var lf = layers[i].frame;
+    layers[i].frame = {
+      x: lastX,
+      y: lastY
+    };
+    maxY = Math.max(maxY, lastY + lf.height);
+    lastX = lastX + margin + lf.width;
   }
 
   previousSibling = label;
@@ -319,14 +315,15 @@ function addLabel(text, id, x, y, previousSibling, parentLabel) {
     var y0 = ps.y + 15;
     var x1 = x - 20;
     var y1 = y + 15;
-    var shapePath = ShapePath.fromSVGPath('M' + x0 + ' ' + y0 + ' ' + ' L ' + x0 + ' ' + (y1 - 10) + 'Q' + x0 + ' ' + y1 + ' ' + (x0 + 10) + ' ' + y1 + //' ' + ' L ' + (x0 + 10) + ' ' + (y1) +
-    ' ' + ' L ' + x1 + ' ' + y1);
-    shapePath.style.borders = [{
-      color: '#777777',
-      fillType: Style.FillType.Color
-    }];
-    shapePath.style.borderOptions = {
-      endArrowhead: "FilledCircle"
+    var shapePath = ShapePath.fromSVGPath('M' + x0 + ' ' + y0 + ' ' + ' L ' + x0 + ' ' + (y1 - 10) + 'Q' + x0 + ' ' + y1 + ' ' + (x0 + 10) + ' ' + y1 + ' ' + ' L ' + x1 + ' ' + y1);
+    shapePath.style = {
+      borders: [{
+        color: gray,
+        fillType: Style.FillType.Color
+      }],
+      borderOptions: {
+        endArrowhead: "FilledCircle"
+      }
     };
     shapePath.parent = treeGroup;
   }
@@ -334,11 +331,11 @@ function addLabel(text, id, x, y, previousSibling, parentLabel) {
   return textObj;
 }
 
-function onRenameSymbolsByLocation() {
+function renameSymbolsByPosition() {
   timestamp("+++ start rename ✏️");
   var cnt = 0;
   labelGroup.adjustToFit();
-  labels = labelGroup.layers.slice(0);
+  labels = labelGroup.layers.slice();
   var masterList = []; //sort by Y
 
   masterList = symbols.concat(labels);
@@ -369,7 +366,7 @@ function onRenameSymbolsByLocation() {
       token = token.charAt(token.length - 1) == "/" ? token : token + "/";
       pathStack[depth] = token;
       lastLabelDepth = depth;
-    } else if (type == "SymbolMaster" && !wasRenamed(l)) {
+    } else if (type == "SymbolMaster" && !isNewOrRenamed(l)) {
       path = pathStack.slice(1, depth + 1).join("");
       var newName = calculateNewName(l.name, path);
 
@@ -392,33 +389,30 @@ function calculateNewName(oldName, newPath) {
   return newPath + name;
 }
 
-function wasRenamed(symbol) {
+function isNewOrRenamed(symbol) {
   return names[symbol.id] != symbol.name;
 }
 
 function message(text) {
-  log("<" + text + ">");
+  console.log("<" + text + ">");
   context.document.showMessage(text);
 }
 
-function log(text) {
-  console.log("[g]" + text + "");
-}
-
-function collectSymbols() {
-  var ss = document.getSymbols();
+function collectSymbolMastersInPage() {
   var symbols = [];
+  var layers = page.layers;
 
-  for (var i = 0; i < ss.length; i++) {
-    if (ss[i].parent && ss[i].parent.id == page.id) {
-      symbols.push(ss[i]);
+  for (var i = 0; i < layers.length; i++) {
+    if (layers[i].type == "SymbolMaster") {
+      symbols.push(layers[i]);
     }
   }
 
   return symbols;
 }
 
-function findFirstLayerNamed(name) {
+function findPageLayerNamed(name) {
+  // Finds layers on the page (not inside Artboards or SymbolMasters)
   var layers = document.getLayersNamed(name);
 
   for (var i = 0; i < layers.length; i++) {
@@ -428,25 +422,8 @@ function findFirstLayerNamed(name) {
   return false;
 }
 
-function sortSymbolsByName(a, b) {
-  var match = /([^a-zA-Z0-9])|([0-9]+)|([a-zA-Z]+)/g,
-      ax = [],
-      bx = [];
-  a.name.replace(match, function (_, $1, $2, $3) {
-    ax.push([$1 || "", $2 || Infinity, $3 || "0"]);
-  });
-  b.name.replace(match, function (_, $1, $2, $3) {
-    bx.push([$1 || "", $2 || Infinity, $3 || "0"]);
-  });
-
-  while (ax.length && bx.length) {
-    var an = ax.shift(),
-        bn = bx.shift(),
-        nn = an[0].localeCompare(bn[0]) || an[1] - bn[1] || an[2].localeCompare(bn[2]);
-    if (nn) return nn;
-  }
-
-  return ax.length - bx.length;
+function sortByName(a, b) {
+  return a.name.localeCompare(b.name);
 }
 
 function sortLayersByOffsetY(a, b) {
@@ -455,7 +432,9 @@ function sortLayersByOffsetY(a, b) {
 
 function timestamp(label) {
   var t = (Date.now() - _time) / 1000;
-  if (t > .3) console.warn(label + " - " + t + " sec.");
+  /*if(t > .1)*/
+
+  console.warn(label + " - " + t + " sec.");
   _time = Date.now();
 }
 
