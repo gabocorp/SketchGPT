@@ -34,5 +34,5 @@
   "version": "0.1.0",
   "name": "⚡️ Gabo Power Tools (GPT)",
   "disableCocoaScriptPreprocessor": true,
-  "appcast": "https://raw.githubusercontent.com//master/.appcast.xml"
+  "appcast": "https://raw.githubusercontent.com/gabocorp/SketchGPT/master/.appcast.xml"
 }
