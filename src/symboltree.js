@@ -52,14 +52,16 @@ symbols = util.collectSymbolMastersInPage(page);
 //// ## SYNC ##
 export function onSyncSymbolTree() {
 	try {
-		if (labelGroup) {
-			//if labels exist, rename symbol masters based on labeling
-			getStoredSymbolMasterNames();
-			renameSymbolsByPosition();
+		if (symbols.length > 0) {
+			if (labelGroup) {
+				//if labels exist, rename symbol masters based on labeling
+				getStoredSymbolMasterNames();
+				renameSymbolsByPosition();
+			}
+			//generate new labels and sort symbols
+			arrangeSymbols();
+			setStoredSymbolMasterNames();
 		}
-		//generate new labels and sort symbols
-		arrangeSymbols();
-		setStoredSymbolMasterNames();
 		reportAlert();
 	} catch (error) {
 		console.error(error);
@@ -237,6 +239,13 @@ function renameSymbolsByPosition() {
 
 // END REPORT
 function reportAlert() {
+
+	if (symbols.length == 0) {
+		UI.alert('SymbolTree is CONFUSED!!! 😖', "This page has no Symbol Masters!\nNothing to do here...");
+		return;
+	}
+
+
 	var reportText = "";
 
 	if (report.renamed.length > 0) {
@@ -266,7 +275,7 @@ function reportAlert() {
 	if (report.sorted.length > 0 || report.renamed.length > 0) {
 		UI.alert('SymbolTree is HAPPY!!! 🤩', reportText);
 	} else {
-		UI.alert('SymbolTree is SAD!!! 😭', "Nothing to do. Everything looks good, though!");
+		UI.alert('SymbolTree is SAD!!! 😭', "Nothing to do. Everything is so clean already!");
 	}
 }
 

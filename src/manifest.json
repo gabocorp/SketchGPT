@@ -3,9 +3,7 @@
   "description": "A collection of random Sketch tools I've built for my personal use.",
   "author": "Gabo Mendoza",
   "homepage": "https://github.com/gabocorp/SketchGPT",
-
   "appcast": "https://raw.githubusercontent.com/gabocorp/SketchGPT/master/.appcast.xml",
-
   "identifier": "com.gabocorp.sketchgpt",
   "compatibleVersion": 3,
   "bundleVersion": 1,
@@ -15,27 +13,28 @@
       "script": "symboltree.js",
       "shortcut": "cmd option control 0",
       "handler": "onSyncSymbolTree",
-      "name": "Run SymbolTree",
+      "name": "Run SymbolTree (Organize/Rename Symbols)",
       "identifier": "syncsymbols"
     },
     {
       "script": "auditor.js",
-      "shortcut": "cmd option control i",
+      "shortcut": "cmd option control -",
       "handler": "onGenerateAuditor",
-      "name": "Generate TextStyle Artboard",
+      "name": "Generate Shared TextStyle Artboard",
       "identifier": "generateauditor"
     },
     {
       "script": "auditor.js",
-      "shortcut": "cmd option control u",
       "handler": "onSaveStyleJSON",
-      "name": "Export Shared Styles to JSON file",
+      "name": "Export Shared TextStyles to JSON file",
       "identifier": "savejson"
     }
   ],
   "menu": {
+    "title" : "⚡️ Gabo Power Tools",
     "items": [
       "syncsymbols",
+      "-",
       "generateauditor",
       "savejson"
     ]
