@@ -1,3 +1,5 @@
+import * as util from './util';
+
 console.log("+++");
 const Text = require('sketch/dom').Text;
 const Style = require('sketch/dom').Style;
@@ -13,11 +15,10 @@ const page = document.selectedPage;
 //Settings
 const labelGroupName = "#LABELS";
 const treeGroupName = "#TREE";
+
 const depthMargin = 50;
 const margin = 50;
 const gray = '#777777';
-
-var _time = Date.now();
 
 var labelGroup = false;
 var treeGroup = false;
@@ -43,14 +44,14 @@ var report = {
 	sorted: []
 }
 
-treeGroup = findPageLayerNamed(treeGroupName);
-labelGroup = findPageLayerNamed(labelGroupName);
-symbols = collectSymbolMastersInPage();
+treeGroup = util.findLayerNamed(treeGroupName, page);
+labelGroup = util.findLayerNamed(labelGroupName, page);
 
-//// #SYNC
+symbols = util.collectSymbolMastersInPage(page);
+
+//// ## SYNC ##
 export function onSyncSymbolTree() {
 	try {
-		timestamp("+++ start sync +++");
 		if (labelGroup) {
 			//if labels exist, rename symbol masters based on labeling
 			getStoredSymbolMasterNames();
@@ -65,80 +66,9 @@ export function onSyncSymbolTree() {
 		UI.alert('SymbolTree Just Messed It Up!!!', error.message + ' > Clearing everything out and starting fresh.');
 		//recover from error. Remove all labels to avoid renaming mishaps ;)
 		resetStoredSymbolMasterNames();
-		removeTree();
-		removeLabels();
+		util.removeLayersNamed(treeGroupName, page);
+		util.removeLayersNamed(labelGroupName, page);
 	}
-}
-
-function reportAlert() {
-	var reportText = "";
-
-	if (report.renamed.length > 0) {
-		if (report.renamed.length < 5) {
-			reportText += "Renamed:"
-			for (var i = 0; i < report.renamed.length; i++) {
-				reportText += "\n" + report.renamed[i].oldName + " ➤ " + report.renamed[i].newName
-			}
-		} else {
-			reportText += "Renamed " + report.renamed.length + " Symbols!"
-		}
-	}
-
-	if (report.sorted.length > 0 && report.renamed.length > 0) reportText += "\n\n";
-
-	if (report.sorted.length > 0) {
-		if (report.sorted.length < 5) {
-			reportText += "Repositioned:"
-			for (var i = 0; i < report.sorted.length; i++) {
-				reportText += "\n" + report.sorted[i].name;
-			}
-		} else {
-			reportText += "Repositioned " + report.sorted.length + " Symbols!"
-		}
-	}
-
-
-	if (report.sorted.length > 0 || report.renamed.length > 0) {
-		UI.alert('SymbolTree is HAPPY!!! 🤩', reportText);
-	}else{
-		UI.alert('SymbolTree is SAD!!! 😭', "Nothing to do. Everything looks good, though!");
-	}
-}
-
-function removeTree() {
-	var found = document.getLayersNamed(treeGroupName);
-	found.forEach(element => {
-		element.remove();
-	})
-}
-
-function removeLabels() {
-	var found = document.getLayersNamed(labelGroupName);
-	found.forEach(element => {
-		element.remove();
-	});
-}
-
-// DATA ##
-function resetStoredSymbolMasterNames() {
-	Settings.setDocumentSettingForKey(document, '_STSymbolNames', null);
-}
-
-function setStoredSymbolMasterNames() {
-	if (symbols == null || symbols.length == 0) {
-		console.error("NO SYMBOL MASTERS HERE!!");
-		return;
-	}
-	names = {};
-	symbols.forEach(symbol => {
-		names[symbol.id] = symbol.name;
-	});
-	Settings.setDocumentSettingForKey(document, '_STSymbolNames', names);
-}
-
-function getStoredSymbolMasterNames() {
-	names = Settings.documentSettingForKey(document, '_STSymbolNames');
-	if (!names) names = {};
 }
 
 // ARRANGE ##
@@ -146,13 +76,13 @@ function arrangeSymbols() {
 
 	var map = newMap();
 
-	removeLabels();
-	removeTree();
+	util.removeLayersNamed(treeGroupName, page);
+	util.removeLayersNamed(labelGroupName, page);
 
 	labelGroup = new Group();
 
 	labelGroup.name = labelGroupName;
-	//labelGroup.adjustToFit();
+	//labelGroup.adjustToFit(); 
 	labelGroup.parent = page;
 	labelGroup._object.setHasClickThrough(true);
 
@@ -163,19 +93,14 @@ function arrangeSymbols() {
 	treeGroup._object.setHasClickThrough(true);
 	treeGroup.locked = true;
 
-	symbols.sort(sortByName);
+	symbols.sort(util.sortByName);
 
 	var map = newMap();
 
 	for (var i = 0; i < symbols.length; i++) {
 		mapLayerByName(symbols[i], map);
 	}
-
-	timestamp("map layers");
 	arrangeLayersByMap("", map, 0, null, null);
-	timestamp("arrange layers");
-	message('Arranged ' + symbols.length + ' symbols. Done!');
-
 }
 
 function newMap() {
@@ -194,22 +119,11 @@ function mapLayerByName(layer, map) {
 	mapThis._LAYERS.push(layer);
 }
 
-
-/*
-var fiber = require('sketch/async').createFiber()
-longRunningTask(function(err, result) {
-  fiber.cleanup()
-  // you can continue working synchronously here
-})
-*/
-
-
-
 function arrangeLayersByMap(name, mapLevel, depth, previousSibling, parentLabel) { //RECURSIVE!!
 
 	lastX = depth * depthMargin;
 	lastY = maxY + margin;
-	const label = addLabel(name, name, lastX, lastY, previousSibling, parentLabel);
+	const label = addLabel(name, lastX, lastY, previousSibling, parentLabel);
 	lastY += depthMargin;
 	maxY += depthMargin;
 
@@ -228,18 +142,17 @@ function arrangeLayersByMap(name, mapLevel, depth, previousSibling, parentLabel)
 		maxY = Math.max(maxY, lastY + lf.height);
 		lastX = lastX + margin + lf.width;
 	}
-
 	previousSibling = label;
 	for (var key in mapLevel) {
 		if (key != "_LAYERS") {
 			previousSibling = arrangeLayersByMap(key, mapLevel[key], depth + 1, previousSibling, label);
 		}
 	}
-
 	return label;
 }
 
-function addLabel(text, id, x, y, previousSibling, parentLabel) {
+function addLabel(text, x, y, previousSibling, parentLabel) {
+	// make label
 	var textObj = new Text({
 		text: text + "/",
 		name: text,
@@ -251,21 +164,19 @@ function addLabel(text, id, x, y, previousSibling, parentLabel) {
 		parent: labelGroup
 	});
 
+	//make tree branch ShapePaths
 	if (parentLabel) {
 		const p = parentLabel.frame;
 		const ps = (previousSibling) ? previousSibling.frame : p;
-
 		var x0 = p.x - 20;
 		var y0 = ps.y + 15;
 		var x1 = x - 20;
 		var y1 = y + 15;
-
 		const shapePath = ShapePath.fromSVGPath(
-			'M' + x0 + ' ' + y0 +
-			' ' + ' L ' + x0 + ' ' + (y1 - 10) +
-			'Q' + x0 + ' ' + y1 + ' ' + (x0 + 10) + ' ' + (y1) +
-			' ' + ' L ' + x1 + ' ' + y1);
-
+			'M' + x0 + ' ' + y0 + //  o
+			' ' + ' L ' + x0 + ' ' + (y1 - 10) + //  |
+			'Q' + x0 + ' ' + y1 + ' ' + (x0 + 10) + ' ' + (y1) + //   \
+			' ' + ' L ' + x1 + ' ' + y1); //     ---
 		shapePath.style = {
 			borders: [{
 				color: gray,
@@ -275,27 +186,19 @@ function addLabel(text, id, x, y, previousSibling, parentLabel) {
 				endArrowhead: "FilledCircle",
 			}
 		};
-
 		shapePath.parent = treeGroup;
 	}
-
 	return textObj;
 }
 
 function renameSymbolsByPosition() {
-	timestamp("+++ start rename ✏️");
-
-
-
 	labelGroup.adjustToFit();
 	labels = labelGroup.layers.slice();
 	var masterList = [];
 	//sort by Y
 	masterList = symbols.concat(labels);
 	page._object.setRulerBase(CGPointMake(0, 0));
-	masterList.sort(sortLayersByOffsetY);
-
-	timestamp("sort master list");
+	masterList.sort(util.sortLayersByOffsetY);
 
 	var lastLabelDepth = 0;
 	var pathStack = ['/'];
@@ -317,9 +220,10 @@ function renameSymbolsByPosition() {
 			token = (token.charAt(token.length - 1) == "/") ? token : token + "/";
 			pathStack[depth] = token;
 			lastLabelDepth = depth;
-		} else if (type == "SymbolMaster" && !isNewOrRenamed(l)) {
+		} else if (type == "SymbolMaster" && !names[l.id] != l.name) {
+			// else if is type SymbolMaster AND name is new/different
 			path = pathStack.slice(1, depth + 1).join("");
-			var newName = calculateNewName(l.name, path);
+			var newName = util.calculateNewName(l.name, path);
 			if (l.name != newName) {
 				report.renamed.push({
 					oldName: l.name,
@@ -329,56 +233,61 @@ function renameSymbolsByPosition() {
 			}
 		} //ELSE ignore
 	}
-	timestamp("rename done");
 }
 
-//// UTIL
+// END REPORT
+function reportAlert() {
+	var reportText = "";
 
-function calculateNewName(oldName, newPath) {
-	var tokens = oldName.split("/");
-	var name = tokens[tokens.length - 1];
-	return newPath + name;
-}
-
-function isNewOrRenamed(symbol) {
-	return names[symbol.id] != symbol.name;
-}
-
-function message(text) {
-	console.log("<" + text + ">");
-	context.document.showMessage(text);
-}
-
-function collectSymbolMastersInPage() {
-	var symbols = [];
-	var layers = page.layers;
-	for (var i = 0; i < layers.length; i++) {
-		if (layers[i].type == "SymbolMaster") {
-			symbols.push(layers[i]);
+	if (report.renamed.length > 0) {
+		if (report.renamed.length < 5) {
+			reportText += "Renamed:"
+			for (var i = 0; i < report.renamed.length; i++) {
+				reportText += "\n" + report.renamed[i].oldName + " ➤ " + report.renamed[i].newName
+			}
+		} else {
+			reportText += "Renamed " + report.renamed.length + " Symbols!";
 		}
 	}
-	return symbols;
-}
 
-function findPageLayerNamed(name) { // Finds layers on the page (not inside Artboards or SymbolMasters)
-	var layers = document.getLayersNamed(name);
-	for (var i = 0; i < layers.length; i++) {
-		if (layers[i].parent.id == page.id) return layers[i];
+	if (report.sorted.length > 0 && report.renamed.length > 0) reportText += "\n\n";
+
+	if (report.sorted.length > 0) {
+		if (report.sorted.length < 5) {
+			reportText += "Repositioned:"
+			for (var i = 0; i < report.sorted.length; i++) {
+				reportText += "\n" + report.sorted[i].name;
+			}
+		} else {
+			reportText += "Repositioned " + report.sorted.length + " Symbols!"
+		}
 	}
-	return false;
+
+	if (report.sorted.length > 0 || report.renamed.length > 0) {
+		UI.alert('SymbolTree is HAPPY!!! 🤩', reportText);
+	} else {
+		UI.alert('SymbolTree is SAD!!! 😭', "Nothing to do. Everything looks good, though!");
+	}
 }
 
-function sortByName(a, b) {
-	return a.name.localeCompare(b.name);
+// DATA //
+
+function resetStoredSymbolMasterNames() {
+	Settings.setDocumentSettingForKey(document, '_STSymbolNames', null);
 }
 
-function sortLayersByOffsetY(a, b) {
-	return (a.frame.y + a.parent.frame.y) - (b.frame.y + b.parent.frame.y);
+function setStoredSymbolMasterNames() {
+	if (symbols == null || symbols.length == 0) {
+		return;
+	}
+	names = {};
+	symbols.forEach(symbol => {
+		names[symbol.id] = symbol.name;
+	});
+	Settings.setDocumentSettingForKey(document, '_STSymbolNames', names);
 }
 
-function timestamp(label) {
-	var t = ((Date.now() - _time) / 1000);
-	/*if(t > .1)*/
-	console.warn(label + " - " + t + " sec.")
-	_time = Date.now();
+function getStoredSymbolMasterNames() {
+	names = Settings.documentSettingForKey(document, '_STSymbolNames');
+	if (!names) names = {};
 }

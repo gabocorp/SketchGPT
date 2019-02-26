@@ -1,4 +1,11 @@
 {
+  "name": "Gabo Power Tools",
+  "description": "A collection of random Sketch tools I've built for my personal use.",
+  "author": "Gabo Mendoza",
+  "homepage": "https://github.com/gabocorp/SketchGPT",
+
+  "appcast": "https://raw.githubusercontent.com/gabocorp/SketchGPT/master/.appcast.xml",
+
   "identifier": "com.gabocorp.sketchgpt",
   "compatibleVersion": 3,
   "bundleVersion": 1,
@@ -6,34 +13,31 @@
 
     {
       "script": "symboltree.js",
-      "shortcut" : "cmd option control 0",
+      "shortcut": "cmd option control 0",
       "handler": "onSyncSymbolTree",
       "name": "Run SymbolTree",
       "identifier": "syncsymbols"
-    }
-    ,
+    },
     {
       "script": "auditor.js",
-      "shortcut" : "cmd option control i",
+      "shortcut": "cmd option control i",
       "handler": "onGenerateAuditor",
       "name": "Generate TextStyle Artboard",
       "identifier": "generateauditor"
     },
     {
       "script": "auditor.js",
-      "handler": "onAuditLayer",
-      "name": "Audit Selected Artboard/SymbolMaster",
-      "identifier": "auditLayer"
+      "shortcut": "cmd option control u",
+      "handler": "onSaveStyleJSON",
+      "name": "Export Shared Styles to JSON file",
+      "identifier": "savejson"
     }
-
-    
-  
   ],
   "menu": {
     "items": [
       "syncsymbols",
       "generateauditor",
-      "auditLayer"
+      "savejson"
     ]
   }
 }

@@ -1,3 +1,5 @@
+import * as util from './util';
+
 var Document = require('sketch/dom').Document
 var Page = require('sketch/dom').Page;
 var Artboard = require('sketch/dom').Artboard
@@ -16,6 +18,7 @@ const margin = 50;
 const padding = 30;
 
 export function onAuditLayer() {
+	test();
 	console.log("+++");
 
 	var selection = document.selectedLayers.layers;
@@ -88,21 +91,31 @@ function auditLayer(group, result) {
 }
 
 
-  
-function getFontWeightNames( fontFam ){
+var fontData = {};
+
+function getFontData(fontFamilyName, index) {
+	if (fontData[fontFamilyName] != null) {
+		return fontData[fontFamilyName][index];
+	}
+
 	var values = [];
-	var members = NSFontManager.sharedFontManager().availableMembersOfFontFamily( fontFam );
+	var members = NSFontManager.sharedFontManager().availableMembersOfFontFamily(fontFamilyName);
 
-	for( var i = 0 ; i < members.length ; i++ ){
+	for (var i = 0; i < members.length; i++) {
 		const w = members[i][2];
-		if(values[w] == null){
-		  values[w] = members[i][1];
+		if (values[w] == null) {
+			values[w] = {
+				weightName: members[i][1],
+				systemName: members[i][0]
+			}
+			//console.log(members[i]);
 		}
-	} 
+	}
 
-	return values;
+	fontData[fontFamilyName] = values;
+	return values[index];
 
-  //return NSFontManager.sharedFontManager().availableMembersOfFontFamily( fontFam );
+	//return NSFontManager.sharedFontManager().availableMembersOfFontFamily( fontFam );
 }
 
 function makeAudit(layer) {
@@ -122,15 +135,9 @@ function makeAudit(layer) {
 
 }
 
-function cloneArray(arr) {
-	return arr.slice();
-}
-
 export function onGenerateAuditor() {
 
-
-
-	var textStyles = cloneArray(document.sharedTextStyles);
+	var textStyles = document.sharedTextStyles.slice();
 
 	//console.log(JSON.stringify(textStyles));
 	bgGroup = new Group({
@@ -139,7 +146,7 @@ export function onGenerateAuditor() {
 	bgGroup.locked = true;
 	//MAKE auditorBoard
 	auditorBoard = new Artboard({
-		name: 'Style Samples as of ' + (new Date().toString()),
+		name: 'Text Styles on ' + (new Date().toString()),
 		parent: page
 	})
 
@@ -153,17 +160,18 @@ export function onGenerateAuditor() {
 	});
 
 	auditorBoard.frame.x = maxX + 100;
-
 	auditorBoard.frame.y = 0;
 
 	//MAKE ALL Style Samples
 	var y = margin;
 	maxX = 0;
 
-	textStyles.sort(sortStyleByName);
+	textStyles.sort(util.sortByName);
 
 	var lastToken = "";
 	var lastName = "";
+
+	getNamedColors();
 
 	for (let i = 0; i < textStyles.length; i++) {
 		const s = textStyles[i];
@@ -191,11 +199,26 @@ export function onGenerateAuditor() {
 			y += padding;
 		}
 
-
 		var sample = makeStyleSample(s, auditorBoard, margin, y);
 
 		if (lastName == s.name) {
-			drawWarning(sample);
+			drawWarning(sample, "duplicate name", '#FF3300FF');
+		} else {
+
+			let sLayers = s.getAllInstancesLayers();
+			let cnt = 0;
+			sLayers.forEach(element => {
+				let p = element.getParentPage();
+				if (p.id != page.id) {
+					cnt++;
+				}
+			});
+
+			if (cnt == 0) {
+				drawWarning(sample, "Never used in this document", '#FFDE00FF');
+			} else if (cnt == 1) {
+				drawWarning(sample, "Only used once", '#FFDE0077');
+			}
 		}
 
 		lastName = s.name;
@@ -203,20 +226,34 @@ export function onGenerateAuditor() {
 		maxX = Math.max(maxX, sample.frame.width);
 	}
 
-	auditorBoard.frame.width = 500; //maxX + (margin * 2);
+	auditorBoard.frame.width = 512; //maxX + (margin * 2);
 	auditorBoard.frame.height = y + margin;
 
-	//RESIZE artboard
-
-	//ARRANGE ARTBOARDS
-
 	document.centerOnLayer(auditorBoard);
-	context.document.showMessage("🙌 Auditor done!");
+	context.document.showMessage("Text Style Samples Done! 🙌");
 }
 
-function drawWarning(sample) {
-	const shapePath = new ShapePath({
-		name: 'dupe',
+
+export function onSaveStyleJSON(){
+	util.saveTextDialogue( getStyleJSON());
+}
+
+let namedColors = {};
+function getNamedColors(){
+	let colors = document.colors;
+	colors.forEach(color => {
+		if(color.name != null){
+			namedColors[color.color] = color.name;
+		}
+	});
+}
+function getColorName( colorString ){
+	return namedColors[colorString];	
+}
+
+function drawWarning(sample, warning, color) {
+	return new ShapePath({
+		name: warning,
 		shapeType: ShapePath.ShapeType.Oval,
 		frame: {
 			x: sample.frame.x - 30,
@@ -226,7 +263,7 @@ function drawWarning(sample) {
 		},
 		style: {
 			fills: [{
-				color: '#F8E71CFF',
+				color: color,
 				fill: Style.FillType.Color,
 			}],
 			borders: []
@@ -235,125 +272,45 @@ function drawWarning(sample) {
 	})
 }
 
-function toHSL(hex) {
-	var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-
-	var r = parseInt(result[1], 16);
-	var g = parseInt(result[2], 16);
-	var b = parseInt(result[3], 16);
-	var a = parseInt(result[4], 16);
-
-	r /= 255, g /= 255, b /= 255, a /= 255;
-	var max = Math.max(r, g, b),
-		min = Math.min(r, g, b);
-	var h, s, l = (max + min) / 2;
-
-	if (max == min) {
-		h = s = 0; // achromatic
-	} else {
-		var d = max - min;
-		s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-		switch (max) {
-			case r:
-				h = (g - b) / d + (g < b ? 6 : 0);
-				break;
-			case g:
-				h = (b - r) / d + 2;
-				break;
-			case b:
-				h = (r - g) / d + 4;
-				break;
-		}
-		h /= 6;
-	}
-
-	s = s * 100;
-	s = Math.round(s);
-	l = l * 100;
-	l = Math.round(l);
-
-	return {
-		h: h,
-		s: s,
-		l: l
-	};
-
-}
-
 function makeBG(text) {
-	if (toHSL(text.style.textColor).l > 50) {
-		new ShapePath({
-			name: 'dark',
-			shapeType: ShapePath.ShapeType.Rectangle,
-			frame: {
-				x: text.frame.x - 4,
-				y: text.frame.y - 2,
-				width: text.frame.width + 8,
-				height: text.frame.height + 4
-			},
-			style: {
-				fills: [{
-					color: '#333333',
-					fill: Style.FillType.Color,
-				}],
-				borders: []
-			},
-			parent: text.parent,
-			locked: true
-		});
+	if (util.toHSL(text.style.textColor).l > 50) {
+		util.drawRectangle({
+			x: text.frame.x - 4,
+			y: text.frame.y - 2,
+			width: text.frame.width + 8,
+			height: text.frame.height + 4
+		}, '#333333FF', 'dark', text.parent);
 		return true;
 	}
 	return false;
 }
 
 function makeStyleSample(sharedStyle, artboard, x, y) {
-	//var layers = sharedStyle.getAllInstancesLayers();
 	var styleSample = new Text({
 		text: sharedStyle.name,
 		sharedStyleId: sharedStyle.id,
 		style: sharedStyle.style,
 		parent: artboard
 	})
-	styleSample.frame.x = x; // + (sharedStyle.name.split("/").length*padding/2);
+
+	styleSample.frame.x = x;
 	styleSample.frame.y = y;
 
 	var fontFamily = sharedStyle.style.fontFamily;
 	var fontWeight = sharedStyle.style.fontWeight;
 
-	var weightTable = getFontWeightNames( fontFamily );
-
-	var fontWeightName = weightTable[fontWeight];
-	/*if (fontFamily == "Helvetica Neue LT Std") {
-		switch (fontWeight) {
-			case 3:
-			fontWeight = "45 Light (3)";
-				break;
-			case 5:
-			fontWeight = "55 Roman (5)";
-				break;
-			case 7:
-			fontWeight = "65 Medium (7)";
-				break;
-			case 9:
-			fontWeight = "75 Bold (9)";
-				break;
-			case 10:
-			fontWeight = "85 Heavy (10)";
-				break;
-		}
-	}*/
+	var fontWeightName = getFontData(fontFamily, fontWeight).weightName;
 
 	//Add Style Details
 	var description = "";
 	description += fontFamily;
-	description += " ∙ weight: " + fontWeightName + " (" + fontWeight +")";
+	description += " " + fontWeightName + " (" + fontWeight + ")";
 	description += " ∙ " + sharedStyle.style.fontSize;
 	if (sharedStyle.style.lineHeight) description += ("/" + sharedStyle.style.lineHeight);
-	description += " ∙ " + sharedStyle.style.alignment + " aligned";
+	if (sharedStyle.style.alignment!="left") description += " ∙ a:" + sharedStyle.style.alignment;
 	if (sharedStyle.style.textTransform != 'none') description += " ∙ " + sharedStyle.style.textTransform;
-	if (sharedStyle.style.kerning > 0) description += " ∙ kern: " + sharedStyle.style.kerning;
-	description += " ∙ " + sharedStyle.style.textColor;
-
+	if (sharedStyle.style.kerning != 0) description += " ∙ k:" + sharedStyle.style.kerning;
+	description += " ∙ " + sharedStyle.style.textColor.toUpperCase() + " (" + getColorName(sharedStyle.style.textColor ) + ")";
 
 	var styleDetails = new Text({
 		text: description,
@@ -372,68 +329,59 @@ function makeStyleSample(sharedStyle, artboard, x, y) {
 	return styleSample;
 }
 
-export function onFindStyle() {
-	//var documents = Document.getDocuments();
-	var document = Document.getSelectedDocument();
-	var selection = document.selectedLayers;
-	if (!selection.isEmpty) {
-		selection.layers.forEach(layer => {
-			//layer.sharedStyleId;
-			//console.log(layer.sharedStyleId);
-			//console.log(document);
-			var sharedStyle = document.getSharedTextStyleWithID(layer.sharedStyleId);
-			//console.log(sharedStyle);
-			var layers = sharedStyle.getAllInstancesLayers();
-			console.log(layers);
-			for (var i = 0; i < layers.length; i++) {
-				var l = layers[i];
-				//console.log( JSON.stringify( l , null , 4) );
-				console.log("-------");
-
-				while (l.parent) {
-					console.log(l.name);
-					l = l.parent;
-				}
-			}
-		});
-	}
-}
-
-
-export function onGetStyleJSON() {
-	/*new WebUI(context, require("../resources/index.html"), {
-		identifier: "identity",
-		x: 0,
-		y: 500,
-		width: 500,
-		height: 400,
-		blurredBackground: false,
-		onlyShowCloseButton: true,
-		hideTitleBar: false,
-		shouldKeepAround: true,
-		resizable: false
-	  }); 
-	  */
-}
-export function onGetStyleJSONs() {
+function getStyleJSON() {
 	var textStyles = document.sharedTextStyles;
-	var output = [];
-	//var layers = textStyles[0].getAllInstancesLayers();
-	//console.log( JSON.stringify(layers[0]._object, null, 4) );
-
+	var output = {};
+	getNamedColors();
 	for (var i = 0; i < textStyles.length; i++) {
 		var styleObj = {};
 		var s = textStyles[i];
+		var name = util.camelize(s.name);
+		styleObj.styleName = name;
+		styleObj.styleSketchName = s.name;
 		styleObj.fontFamily = s.style.fontFamily;
-		styleObj.fontWeight = s.style.fontWeight;
+		styleObj.fontWeightIndex = s.style.fontWeight;
+		var fontData = getFontData(s.style.fontFamily, s.style.fontWeight);
+		styleObj.fontWeight = fontData.weightName + "";
+		styleObj.fontSystemName = fontData.systemName + "";
 		styleObj.fontSize = s.style.fontSize;
 		styleObj.lineHeight = s.style.lineHeight;
 		styleObj.alignment = s.style.alignment;
 		styleObj.textTransform = s.style.textTransform;
 		styleObj.kerning = s.style.kerning;
 		styleObj.color = s.style.textColor;
-		output.push(styleObj);
+		var colorName = getColorName( s.style.textColor );
+		if(colorName != null) styleObj.colorName = colorName;
+		output[name] = (styleObj);
 	}
 	console.log(JSON.stringify(output, null, 4));
+	return JSON.stringify(output, null, 4);
 }
 
+
+// ## DO REPORT ## //
+
+export function onAudit() {
+	if (treeGroup) {
+		var sms = util.collectSymbolMastersInPage(page);
+		var smNames = {};
+		// duplicate names
+		for (var i = 0; i < sms.length; i++) {
+			const s = sms[i];
+			if (smNames[s.name] == null) {
+				smNames[s.name] = 1;
+			} else {
+				smNames[s.name]++;
+			}
+		}
+		for (const key in smNames) {
+			if (smNames[key] > 1) {
+				console.warn(key + " exists " + smNames[key]);
+			}
+		}
+
+
+	} else {
+		console.error("NO TREE...")
+	}
+}
