@@ -8,12 +8,11 @@
   "compatibleVersion": 3,
   "bundleVersion": 1,
   "commands": [
-
     {
       "script": "symboltree.js",
       "shortcut": "cmd option control 0",
       "handler": "onSyncSymbolTree",
-      "name": "Run SymbolTree (Organize/Rename Symbols)",
+      "name": "Organize + Rename Symbols",
       "identifier": "syncsymbols"
     },
     {
