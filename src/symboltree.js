@@ -46,7 +46,6 @@ var report = {
 
 treeGroup = util.findLayerNamed(treeGroupName, page);
 labelGroup = util.findLayerNamed(labelGroupName, page);
-
 symbols = util.collectSymbolMastersInPage(page);
 
 function checkForConflicts(){
