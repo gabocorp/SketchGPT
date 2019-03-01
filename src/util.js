@@ -2,16 +2,7 @@ const Group = require('sketch/dom').Group;
 const ShapePath = require('sketch/dom').ShapePath;
 const Style = require('sketch/dom').Style
 
-
-
-export function test() {
-	console.log("TEST");
-}
-
-
 //// ## UTIL ##
-
-
 
 export function calculateNewName(oldName, newPath) {
 	var tokens = oldName.split("/");
@@ -66,7 +57,7 @@ export function collectSymbolMastersInPage(page) {
 	return symbols;
 }
 
-export function findLayerNamed(name, parent) { // Finds layers with page (not inside Artboards or SymbolMasters)
+export function findLayerNamed(name, parent) { // Finds layers with page (not inside Artboards or Symbol Masters)
 	var layers = parent.layers;
 	for (var i = 0; i < layers.length; i++) {
 		if (layers[i].name == name) return layers[i];

@@ -36,7 +36,7 @@ const labelStyle = {
 }
 
 var labels = false;
-var names = false;
+var oldNames = false;
 var symbols = false;
 
 var report = {
@@ -49,9 +49,29 @@ labelGroup = util.findLayerNamed(labelGroupName, page);
 
 symbols = util.collectSymbolMastersInPage(page);
 
+function checkForConflicts(){
+	//if there's more than one #LABEL group, remove labels, trees, and reset old names... we have a conflict
+	let layers = page.layers.slice();
+	
+	let labelCnt = 0;
+
+	for (let i = 0; i < layers.length; i++) {
+		if (layers[i].name == labelGroupName ) {
+			labelCnt++;
+			if(labelCnt>1){
+				resetStoredSymbolMasterNames();
+				util.removeLayersNamed(treeGroupName, page);
+				util.removeLayersNamed(labelGroupName, page);
+				return;
+			}
+		}
+	}
+}
+
 //// ## SYNC ##
 export function onSyncSymbolTree() {
 	try {
+		checkForConflicts();
 		if (symbols.length > 0) {
 			if (labelGroup) {
 				//if labels exist, rename symbol masters based on labeling
@@ -195,6 +215,9 @@ function addLabel(text, x, y, previousSibling, parentLabel) {
 
 function renameSymbolsByPosition() {
 	labelGroup.adjustToFit();
+	let symbolsToRename = [];
+	let symbolsNewNames = [];
+
 	labels = labelGroup.layers.slice();
 	var masterList = [];
 	//sort by Y
@@ -222,8 +245,8 @@ function renameSymbolsByPosition() {
 			token = (token.charAt(token.length - 1) == "/") ? token : token + "/";
 			pathStack[depth] = token;
 			lastLabelDepth = depth;
-		} else if (type == "SymbolMaster" && !names[l.id] != l.name) {
-			// else if is type SymbolMaster AND name is new/different
+		} else if (type == "SymbolMaster" && oldNames[l.id] == l.name) {
+			// else if is type SymbolMaster AND name is the same as last time
 			path = pathStack.slice(1, depth + 1).join("");
 			var newName = util.calculateNewName(l.name, path);
 			if (l.name != newName) {
@@ -245,11 +268,10 @@ function reportAlert() {
 		return;
 	}
 
-
 	var reportText = "";
 
 	if (report.renamed.length > 0) {
-		if (report.renamed.length < 5) {
+		if (report.renamed.length < 20) {
 			reportText += "Renamed:"
 			for (var i = 0; i < report.renamed.length; i++) {
 				reportText += "\n" + report.renamed[i].oldName + " ➤ " + report.renamed[i].newName
@@ -272,10 +294,12 @@ function reportAlert() {
 		}
 	}
 
-	if (report.sorted.length > 0 || report.renamed.length > 0) {
+
+	if ( report.renamed.length > 0 ) {
 		UI.alert('SymbolTree is HAPPY!!! 🤩', reportText);
 	} else {
-		UI.alert('SymbolTree is SAD!!! 😭', "Nothing to do. Everything is so clean already!");
+		UI.message( "⚡️ Everything is clean! ⚡️" );
+		//UI.alert('SymbolTree is SAD!!! 😭', "Nothing to do. Everything is so clean already!");
 	}
 }
 
@@ -289,14 +313,14 @@ function setStoredSymbolMasterNames() {
 	if (symbols == null || symbols.length == 0) {
 		return;
 	}
-	names = {};
+	oldNames = {};
 	symbols.forEach(symbol => {
-		names[symbol.id] = symbol.name;
+		oldNames[symbol.id] = symbol.name;
 	});
-	Settings.setDocumentSettingForKey(document, '_STSymbolNames', names);
+	Settings.setDocumentSettingForKey(document, '_STSymbolNames', oldNames);
 }
 
 function getStoredSymbolMasterNames() {
-	names = Settings.documentSettingForKey(document, '_STSymbolNames');
-	if (!names) names = {};
+	oldNames = Settings.documentSettingForKey(document, '_STSymbolNames');
+	if (!oldNames) oldNames = {};
 }

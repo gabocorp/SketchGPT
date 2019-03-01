@@ -28,14 +28,24 @@
       "name": "Export Shared TextStyles to JSON file",
       "identifier": "savejson"
     }
+    ,
+    {
+      "script": "gonext.js",
+      "shortcut": "cmd option control .",
+      "handler": "onGoNext",
+      "name": "Select Next Instance...",
+      "identifier": "gonext"
+    }
   ],
   "menu": {
     "title" : "⚡️ Gabo Power Tools",
     "items": [
-      "syncsymbols",
+      "syncsymbols", 
       "-",
       "generateauditor",
-      "savejson"
+      "savejson",
+      "-",
+      "gonext"
     ]
   }
 }

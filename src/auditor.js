@@ -20,7 +20,6 @@ const padding = 30;
 export function onAuditLayer() {
 	test();
 	console.log("+++");
-
 	var selection = document.selectedLayers.layers;
 	var auditQueue = {};
 	var p;
@@ -30,19 +29,15 @@ export function onAuditLayer() {
 			case "SymbolMaster":
 				p = selection[i]
 				break;
-
 			default:
 				p = selection[i].getParentArtboard();
 				break;
 		}
-
 		auditQueue[p.id] = p;
 	}
-
 	for (const key in auditQueue) {
 		auditArtboard(auditQueue[key]);
 	}
-
 }
 
 function auditArtboard(ab) {
@@ -90,7 +85,6 @@ function auditLayer(group, result) {
 	}
 }
 
-
 var fontData = {};
 
 function getFontData(fontFamilyName, index) {
@@ -122,9 +116,6 @@ function makeAudit(layer) {
 	console.log(layer);
 	var auditBlock = new Text({
 		text: "Audit!!!",
-		//alignment: Text.style.alignment.left,
-		//sharedStyleId: sharedStyle.id,
-		//style:sharedStyle.style,
 		parent: audits,
 		fixedWidth: true
 	});
@@ -136,9 +127,7 @@ function makeAudit(layer) {
 }
 
 export function onGenerateAuditor() {
-
 	var textStyles = document.sharedTextStyles.slice();
-
 	//console.log(JSON.stringify(textStyles));
 	bgGroup = new Group({
 		name: "bgs"
