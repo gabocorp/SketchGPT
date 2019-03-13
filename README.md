@@ -1,32 +1,34 @@
 # Gabo Power Tools (GPT)
 
-A small collection of handy tools for [Sketch](https://sketchapp.com/). Use at your own risk.
+A small collection of handy tools for [Sketch](https://sketchapp.com/). ***Use at your own risk.***
 
-[Download](https://github.com/gabocorp/SketchGPT/releases/latest) the latest release of the plugin
+## Installation
+1. [Download](https://github.com/gabocorp/SketchGPT/releases/latest) the latest release of the plugin
+2. Un-zip
+3. Double-click on *gpt.sketchplugin*
 
-It currently includes these four tools:
-
----
-
-## 1. SymbolTree (Organize + Rename)
+# SymbolTree (Organize + Rename)
 This tool organizes your Symbols page and simplifies management of symbol hierarchy.
 
-### Usage
+## Usage
 ***Step 1.*** Run once in your *Symbols* page to automatically organize all your *symbols* by name and hierarchy.
 
-![Organized Symbols](assets/organized-symbols.png "Organized Symbols")
+![Organized Symbols](assets/organized-symbols.gif "Organized Symbols")
 
-***Step 2.*** Now you can rename your *symbols* by changing *group* label text or moving your *symbols* below desired label and **running the tool again**.
+***Step 2.*** Now you can rename your *symbols* by changing *group label* text or moving your *symbols* below desired label and **running the tool again**.
 
 ![Organized Symbols](assets/rename.gif "Organized Symbols")
 
-## Make Shared TextStyle Samples
+# Make Shared TextStyle Samples
  Makes a new artboard with samples and details for each *shared text style*.
 
-## Export Shared TextStyles to JSON
+# Export Shared TextStyles to JSON
  Makes a JSON file with all the shared text style data for easy parsing. Reading it is up to you.
 
-Here's an example:
+## Usage
+***Step 1.*** Run it and name an output file.
+
+Here's some sample output:
 ``` js
 {
     "headerOnDarkC": {
@@ -62,10 +64,9 @@ Here's an example:
 }
 ```
 
-## Select Next Instance
+# Select Next Instance
 Quickly cycle through instances of symbols and styles throughout the document.
 
-### Usage 
-
+## Usage 
 - **Select** any *symbol **instance*** and **run** to select the next instance of that symbol.
-- **Select** any *layer* with a shared *style* and **run** to select the next layer with that *style*
+- **Select** any *layer* with a shared *style* and **run** to select the next layer with that *style* applied
