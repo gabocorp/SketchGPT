@@ -95,7 +95,7 @@ export function onSyncSymbolTree() {
 // ARRANGE ##
 function arrangeSymbols() {
 
-	var map = newMap();
+	var map = newMap(); 
 
 	util.removeLayersNamed(treeGroupName, page);
 	util.removeLayersNamed(labelGroupName, page);
@@ -122,6 +122,9 @@ function arrangeSymbols() {
 		mapLayerByName(symbols[i], map);
 	}
 	arrangeLayersByMap("", map, 0, null, null);
+
+	labelGroup.adjustToFit();
+	treeGroup.adjustToFit();
 }
 
 function newMap() {
